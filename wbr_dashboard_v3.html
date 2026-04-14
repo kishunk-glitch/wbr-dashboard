@@ -8,6 +8,44 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#f0f2f5;color:#1c2128;min-height:100vh;font-size:13px}
+
+/* ── EMAIL GATE ── */
+#email-gate{
+  position:fixed;inset:0;background:#0d1117;
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;
+}
+#email-gate.hidden{display:none}
+.gate-box{
+  background:#161b22;border:1px solid #30363d;border-radius:16px;
+  padding:40px 44px;width:100%;max-width:420px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+  text-align:center;
+}
+.gate-logo{font-size:22px;font-weight:800;margin-bottom:6px}
+.gate-logo .or{color:#EF9F27}.gate-logo .hl{color:#e6edf3}
+.gate-subtitle{font-size:12px;color:#8b949e;margin-bottom:32px}
+.gate-label{display:block;text-align:left;font-size:11px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.gate-input{
+  width:100%;padding:11px 14px;background:#0d1117;border:1px solid #30363d;
+  border-radius:8px;color:#e6edf3;font-size:14px;outline:none;
+  transition:border-color .2s;margin-bottom:6px;
+}
+.gate-input:focus{border-color:#EF9F27}
+.gate-hint{font-size:11px;color:#8b949e;text-align:left;margin-bottom:20px}
+.gate-btn{
+  width:100%;padding:12px;background:#EF9F27;border:none;border-radius:8px;
+  color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s;
+}
+.gate-btn:hover{opacity:.88}
+.gate-err{
+  background:#2d1515;border:1px solid #E24B4A;border-radius:8px;
+  padding:10px 14px;font-size:12px;color:#E24B4A;margin-bottom:16px;
+  display:none;
+}
+.gate-err.show{display:block}
+.gate-divider{border:none;border-top:1px solid #30363d;margin:24px 0}
+.gate-footer{font-size:11px;color:#57606a}
 :root{
   --orange:#EF9F27;--green:#1D9E75;--blue:#378ADD;--purple:#7F77DD;--red:#E24B4A;
   --card:#ffffff;--bg:#f0f2f5;--border:#e1e4e8;--muted:#57606a;--bg2:#f6f8fa;
@@ -123,6 +161,27 @@ body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#f0f2f5;color:
 </style>
 </head>
 <body>
+
+<!-- EMAIL GATE -->
+<div id="email-gate">
+  <div class="gate-box">
+    <div class="gate-logo"><span class="or">Orange</span><span class="hl"> Health</span></div>
+    <div class="gate-subtitle">WBR Dashboard &middot; Internal Access Only</div>
+
+    <div class="gate-err" id="gate-err"></div>
+
+    <label class="gate-label" for="gate-email">Your Orange Health Email</label>
+    <input class="gate-input" id="gate-email" type="email"
+           placeholder="yourname@orangehealth.in"
+           onkeydown="if(event.key==='Enter')submitGate()"/>
+    <div class="gate-hint">Only @orangehealth.in emails are allowed</div>
+
+    <button class="gate-btn" onclick="submitGate()">Access Dashboard →</button>
+
+    <hr class="gate-divider"/>
+    <div class="gate-footer">🔒 This dashboard is for internal use only.<br/>Unauthorised access is not permitted.</div>
+  </div>
+</div>
 
 <!-- TOPBAR -->
 <div class="topbar">
@@ -603,7 +662,54 @@ function esc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-window.onload = loadData;
+// ─── EMAIL GATE ───────────────────────────────────────────────────
+const ALLOWED_DOMAIN = 'orangehealth.in';
+
+function checkGate() {
+  const saved = sessionStorage.getItem('oh_wbr_user');
+  if (saved) {
+    document.getElementById('email-gate').classList.add('hidden');
+    loadData();
+  } else {
+    // Show gate, don't load data yet
+    document.getElementById('gate-email').focus();
+  }
+}
+
+function submitGate() {
+  const emailEl = document.getElementById('gate-email');
+  const errEl   = document.getElementById('gate-err');
+  const email   = (emailEl.value || '').trim().toLowerCase();
+
+  // Basic format check
+  if (!email.includes('@') || !email.includes('.')) {
+    showGateErr('Please enter a valid email address.');
+    return;
+  }
+
+  // Domain check
+  const domain = email.split('@')[1];
+  if (domain !== ALLOWED_DOMAIN) {
+    showGateErr('Access restricted to @orangehealth.in email addresses only.');
+    emailEl.value = '';
+    emailEl.focus();
+    return;
+  }
+
+  // Passed — store and unlock
+  errEl.classList.remove('show');
+  sessionStorage.setItem('oh_wbr_user', email);
+  document.getElementById('email-gate').classList.add('hidden');
+  loadData();
+}
+
+function showGateErr(msg) {
+  const el = document.getElementById('gate-err');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+window.onload = checkGate;
 </script>
 </body>
 </html>
