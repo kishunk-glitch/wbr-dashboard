@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>WBR Dashboard — Orange Health Labs</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#f0f2f5;color:#1c2128;min-height:100vh;font-size:13px}
+:root{
+  --orange:#EF9F27;--green:#1D9E75;--blue:#378ADD;--purple:#7F77DD;--red:#E24B4A;
+  --card:#ffffff;--bg:#f0f2f5;--border:#e1e4e8;--muted:#57606a;--bg2:#f6f8fa;
+}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 28px;background:#0d1117;border-bottom:1px solid #30363d;position:sticky;top:0;z-index:100}
+.brand{font-size:19px;font-weight:800;letter-spacing:-.3px}
+.brand .or{color:var(--orange)}.brand .hl{color:#e6edf3}.brand .dash{color:#8b949e;font-weight:400;margin:0 6px}
+.topbar-sub{font-size:10.5px;color:#8b949e;margin-top:3px}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.live-badge{display:flex;align-items:center;gap:5px;background:#0d2b1d;border:1px solid var(--green);padding:4px 10px;border-radius:20px;font-size:10px;color:var(--green);font-weight:700}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.ts-badge{background:#161b22;border:1px solid #30363d;padding:4px 10px;border-radius:20px;font-size:10px;color:#8b949e}
+.refresh-btn{padding:6px 14px;background:transparent;border:1px solid #30363d;color:#e6edf3;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600}
+.refresh-btn:hover{background:#161b22}
+
+/* ── DEPT TABS ── */
+.dept-tabs{display:flex;background:#fff;border-bottom:1px solid var(--border);padding:0 28px;gap:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.dept-tab{padding:12px 20px;background:none;border:none;border-bottom:3px solid transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:600;transition:.2s;white-space:nowrap}
+.dept-tab:hover{color:#1c2128}
+.dept-tab.crm.active{color:#378ADD;border-bottom-color:#378ADD}
+.dept-tab.voc.active{color:#7F77DD;border-bottom-color:#7F77DD}
+.dept-tab.ld.active{color:#1D9E75;border-bottom-color:#1D9E75}
+.dept-tab.admin.active{color:#EF9F27;border-bottom-color:#EF9F27}
+
+/* ── WEEK NAV ── */
+.week-nav{display:flex;align-items:center;justify-content:center;gap:10px;padding:11px 28px;border-bottom:1px solid var(--border);background:#fff;flex-wrap:wrap}
+.nav-btn{padding:7px 16px;background:#fff;border:1px solid var(--border);color:#1c2128;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:.2s}
+.nav-btn:hover:not(:disabled){background:var(--bg2);border-color:#aaa}
+.nav-btn:disabled{opacity:.35;cursor:not-allowed}
+.week-display{min-width:220px;text-align:center;font-size:13px;font-weight:700;color:#1c2128;padding:7px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:8px}
+.latest-btn{padding:7px 16px;background:var(--orange);border:none;color:#fff;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;transition:.15s}
+.latest-btn:hover{opacity:.88}
+.date-btn{padding:7px 14px;background:#fff;border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600}
+.date-btn:hover{background:var(--bg2);color:#1c2128}
+.date-picker-popup{position:relative;display:inline-block}
+.date-picker-inner{display:none;position:absolute;top:38px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:240px}
+.date-picker-inner.open{display:block}
+.date-picker-inner label{font-size:10px;color:var(--muted);display:block;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.date-picker-inner input[type=date]{width:100%;padding:7px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:#1c2128;font-size:12px;cursor:pointer}
+.date-picker-tip{font-size:10px;color:var(--muted);margin-top:6px;text-align:center}
+
+/* ── CONTENT ── */
+.content{padding:20px 28px;max-width:1440px;margin:0 auto}
+.page-hidden{display:none!important}
+
+/* ── SUMMARY TILES ── */
+.summary-row{display:flex;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+.summary-tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 20px;flex:1;min-width:180px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.summary-tile-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px}
+.summary-tile-val{font-size:26px;font-weight:800;line-height:1;margin-bottom:4px}
+.summary-tile-sub{font-size:11px;color:var(--muted)}
+.tile-ok .summary-tile-val{color:var(--green)}
+.tile-miss .summary-tile-val{color:var(--red)}
+.tile-neutral .summary-tile-val{color:var(--orange)}
+
+/* ── SECTION HEADER ── */
+.sec-hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin:22px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+
+/* ── METRIC CARDS GRID ── */
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
+@media(max-width:1100px){.metrics-grid{grid-template-columns:1fr}}
+
+/* ── METRIC CARD ── */
+.metric-card{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,.05);transition:box-shadow .2s}
+.metric-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.metric-card.s-ok  {border-left:3px solid var(--green)}
+.metric-card.s-miss{border-left:3px solid var(--red)}
+.metric-card.s-none{border-left:3px solid var(--border)}
+
+/* card header */
+.card-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 16px 0}
+.card-title-row{display:flex;align-items:flex-start;gap:8px}
+.status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:2px}
+.card-name{font-size:13px;font-weight:600;color:#1c2128;line-height:1.35}
+.card-actions{display:flex;gap:5px;align-items:center;flex-shrink:0;margin-left:8px}
+.owner-badge{font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;background:var(--bg2);color:var(--muted);border:1px solid var(--border)}
+.note-btn{font-size:10px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:4px;padding:2px 7px;cursor:pointer}
+.note-btn:hover{color:#1c2128;background:var(--bg2)}
+
+/* target row */
+.card-target{padding:3px 16px 0;font-size:10px;color:var(--muted)}
+
+/* value row */
+.card-val-row{display:flex;align-items:baseline;gap:10px;padding:8px 16px 0;flex-wrap:wrap}
+.card-val{font-size:28px;font-weight:800;line-height:1}
+.wow-pill{display:flex;align-items:center;gap:3px;font-size:11px;font-weight:700}
+.wow-up{color:var(--green)}.wow-dn{color:var(--red)}.wow-nc{color:var(--muted)}
+
+/* dual charts */
+.card-charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 16px 0;flex:1}
+.chart-block{}
+.mini-chart-lbl{font-size:9px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.mini-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.chart-divider{width:1px;background:var(--border);margin:0 2px}
+
+/* stats bar */
+.card-stats{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--border);margin-top:12px}
+.stat-cell{padding:9px 6px;text-align:center;border-right:1px solid var(--border)}
+.stat-cell:last-child{border-right:none}
+.stat-lbl{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:3px}
+.stat-val{font-size:12px;font-weight:700;color:#1c2128}
+.stat-up{color:var(--green)}.stat-dn{color:var(--red)}
+
+/* loading / error */
+.loading{display:flex;align-items:center;justify-content:center;gap:12px;padding:60px 20px;color:var(--muted);font-size:14px}
+.spinner{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err-box{background:#fff5f5;border:1px solid #ffd7d9;border-radius:10px;padding:20px;margin:20px 0;color:var(--red);font-size:13px;line-height:1.6}
+.empty-week{text-align:center;padding:40px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div>
+    <div class="brand"><span class="or">Orange</span><span class="hl"> Health</span><span class="dash">—</span><span class="hl">WBR Dashboard</span></div>
+    <div class="topbar-sub">Orange Health Labs &middot; CRM &middot; VOC &middot; L&amp;D &middot; Admin &middot; Week-on-Week</div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-badge"><div class="live-dot"></div>Live</div>
+    <div class="ts-badge" id="ts">Loading…</div>
+    <button class="refresh-btn" onclick="loadData()">⟳ Refresh</button>
+  </div>
+</div>
+
+<!-- DEPT TABS -->
+<div class="dept-tabs">
+  <button class="dept-tab crm active" onclick="showDept('crm',this)">📋 CRM — Khushboo</button>
+  <button class="dept-tab voc"        onclick="showDept('voc',this)">🔬 VOC — Dr Prerna</button>
+  <button class="dept-tab ld"         onclick="showDept('ld',this)">📚 L&amp;D — Rashmi</button>
+  <button class="dept-tab admin"      onclick="showDept('admin',this)">🏢 Admin — Basava</button>
+</div>
+
+<!-- WEEK NAV -->
+<div class="week-nav">
+  <button class="nav-btn" id="btn-prev" onclick="navigate(-1)">◄ Previous Week</button>
+  <div class="week-display" id="week-display">—</div>
+  <button class="nav-btn" id="btn-next" onclick="navigate(1)">Next Week ►</button>
+  <button class="latest-btn" onclick="goLatest()">Latest</button>
+  <div class="date-picker-popup" id="date-popup">
+    <button class="date-btn" onclick="toggleDatePicker()">📅 Go to Date</button>
+    <div class="date-picker-inner" id="date-picker-inner">
+      <label>Jump to week containing date</label>
+      <input type="date" onchange="jumpToDate(this.value)"/>
+      <div class="date-picker-tip">Nearest week will be selected</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGES -->
+<div id="page-crm"   class="content"><div class="loading"><div class="spinner"></div><span>Loading…</span></div></div>
+<div id="page-voc"   class="content page-hidden"></div>
+<div id="page-ld"    class="content page-hidden"></div>
+<div id="page-admin" class="content page-hidden"></div>
+
+<script>
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx122yYBIEPqo74-i9iucunMQS5w1jg4JpE5FiVABbvouhN3IUFjl13ZIIUlBLqzKTb/exec';
+
+const DEPT_CFG = {
+  crm:   { label:'CRM',   accent:'#378ADD' },
+  voc:   { label:'VOC',   accent:'#7F77DD' },
+  ld:    { label:'L&D',   accent:'#1D9E75' },
+  admin: { label:'Admin', accent:'#EF9F27' },
+};
+
+// Metrics to hide (matched by regex against label)
+const SKIP_LABELS = {
+  crm: [/reopen/i],
+};
+
+// Metrics that should never show % formatting
+const NO_PCT_PATTERNS = [/dpmo/i, /audit/i];
+
+// Key summary metrics per dept (shown as top tiles)
+const SUMMARY_METRICS = {
+  crm:   ['DPTO (Fatals/1000 chat)', 'Chats / Request', 'UWT < 2 mins', 'Agent Quality Scores'],
+  voc:   ['NPS', 'Company Overall DPMO Rate', 'No of Complaints', 'TAT Resolution'],
+  ld:    ['e-medic CSAT', 'E-NPS', 'Very Painful Prick / 1000 orders', 'NHT Certified Agents'],
+  admin: ['No. of Downtime Incidents (Lab)', 'No. of Stores Live', 'CAPEX Efficiency', 'Stores Infra Quality Score'],
+};
+
+let _data   = null;
+let _dept   = 'crm';
+let _curIdx = -1;
+let _charts = {};
+
+// ─── DATA LOADING ─────────────────────────────────────────────────
+function loadData() {
+  ['crm','voc','ld','admin'].forEach(d =>
+    document.getElementById('page-'+d).innerHTML =
+      '<div class="loading"><div class="spinner"></div><span>Loading data from Google Sheet…</span></div>'
+  );
+  document.getElementById('ts').textContent = 'Loading…';
+
+  fetch(WEB_APP_URL)
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) throw new Error(d.error);
+      _data = d;
+      document.getElementById('ts').textContent = 'Updated: ' + (d.timestamp || new Date().toLocaleString());
+      const firstDept = getDeptData('crm');
+      _curIdx = (firstDept && firstDept.weeks) ? firstDept.weeks.length - 1 : 0;
+      renderDept();
+    })
+    .catch(e => {
+      document.getElementById('page-crm').innerHTML =
+        `<div class="err-box"><b>⚠ Failed to load data</b><br>${e.message}<br>
+        <small style="opacity:.7">Make sure the Web App is deployed with access set to "Anyone".</small></div>`;
+      ['voc','ld','admin'].forEach(d => document.getElementById('page-'+d).innerHTML = '');
+    });
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────
+function navigate(dir) {
+  const dept = getDeptData();
+  if (!dept || !dept.weeks) return;
+  const next = _curIdx + dir;
+  if (next >= 0 && next < dept.weeks.length) { _curIdx = next; renderDept(); }
+}
+function goLatest() {
+  const dept = getDeptData();
+  if (!dept || !dept.weeks) return;
+  _curIdx = dept.weeks.length - 1;
+  renderDept();
+}
+function toggleDatePicker() {
+  const el = document.getElementById('date-picker-inner');
+  el.classList.toggle('open');
+  if (el.classList.contains('open')) {
+    setTimeout(() => {
+      document.addEventListener('click', function closePicker(e) {
+        if (!document.getElementById('date-popup').contains(e.target)) {
+          el.classList.remove('open');
+          document.removeEventListener('click', closePicker);
+        }
+      });
+    }, 10);
+  }
+}
+function jumpToDate(dateStr) {
+  if (!dateStr || !_data) return;
+  const target = new Date(dateStr + 'T00:00:00');
+  const dept = getDeptData();
+  if (!dept || !dept.weeks) return;
+  const yr = target.getFullYear();
+  const MONTHS = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  function parseWeekDates(label) {
+    const s = label.toLowerCase().replace(/st|nd|rd|th/g,'').replace(/[\u2013\u2014]/g,'-');
+    const mms = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/g)||[];
+    const nums = s.match(/\d+/g)||[];
+    if (!mms.length||!nums.length) return null;
+    const m0=MONTHS[mms[0]], m1=mms[1]?MONTHS[mms[1]]:m0;
+    const d0=parseInt(nums[0]), d1=nums[1]?parseInt(nums[1]):d0;
+    return {start:new Date(yr,m0,d0),end:new Date(yr,m1,d1)};
+  }
+  let bestIdx=dept.weeks.length-1,bestDiff=Infinity;
+  dept.weeks.forEach((w,i)=>{
+    const r=parseWeekDates(w);if(!r)return;
+    if(target>=r.start&&target<=r.end){bestIdx=i;bestDiff=0;return;}
+    const diff=Math.min(Math.abs(target-r.start),Math.abs(target-r.end));
+    if(diff<bestDiff){bestDiff=diff;bestIdx=i;}
+  });
+  _curIdx=bestIdx;
+  document.getElementById('date-picker-inner').classList.remove('open');
+  renderDept();
+}
+function showDept(deptKey, el) {
+  document.querySelectorAll('.dept-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['crm','voc','ld','admin'].forEach(d=>{
+    document.getElementById('page-'+d).className=(d===deptKey?'content':'page-hidden content');
+  });
+  _dept=deptKey;
+  if(_data){
+    const d=getDeptData();
+    if(d&&d.weeks&&(_curIdx<0||_curIdx>=d.weeks.length)) _curIdx=d.weeks.length-1;
+    renderDept();
+  }
+}
+function getDeptData(key){return _data?(_data[key||_dept]||null):null;}
+
+// ─── RENDER DEPT ──────────────────────────────────────────────────
+function renderDept() {
+  if (!_data) return;
+  Object.values(_charts).forEach(c=>{try{c.destroy();}catch(e){}});
+  _charts = {};
+
+  const cfg  = DEPT_CFG[_dept];
+  const dept = getDeptData();
+
+  if (!dept || dept.error) {
+    document.getElementById('page-'+_dept).innerHTML =
+      `<div class="err-box">Error loading ${esc(cfg.label)} data: ${esc(dept?.error||'No data available')}</div>`;
+    return;
+  }
+
+  const weeks = dept.weeks || [];
+  if (!weeks.length) {
+    document.getElementById('page-'+_dept).innerHTML = '<div class="err-box">No week data found.</div>';
+    return;
+  }
+  if (_curIdx < 0 || _curIdx >= weeks.length) _curIdx = weeks.length - 1;
+  const prevIdx = _curIdx > 0 ? _curIdx - 1 : -1;
+
+  // Update nav
+  const curWk  = weeks[_curIdx];
+  const prevWk = prevIdx >= 0 ? weeks[prevIdx] : null;
+  document.getElementById('week-display').textContent = prevWk ? `${prevWk} — ${curWk}` : curWk;
+  document.getElementById('btn-prev').disabled = _curIdx <= 0;
+  document.getElementById('btn-next').disabled = _curIdx >= weeks.length - 1;
+
+  // Collect all metrics
+  const allMetrics = [];
+  (dept.sections||[]).forEach(sec=>{
+    (sec.metrics||[]).forEach(m=>allMetrics.push({...m, _section:sec.title}));
+  });
+
+  // Build summary tiles
+  const summaryKeys = SUMMARY_METRICS[_dept] || [];
+  let summaryHtml = '<div class="summary-row">';
+  summaryKeys.forEach(key => {
+    const m = allMetrics.find(x => x.label.toLowerCase().includes(key.toLowerCase()));
+    if (!m) return;
+    const stats = computeStats(m.values, weeks, _curIdx);
+    const tStatus = evalTarget(m, stats.curNum);
+    const cls = tStatus === 'ok' ? 'tile-ok' : tStatus === 'miss' ? 'tile-miss' : 'tile-neutral';
+    const val = fmtVal(m.values[_curIdx], m);
+    const wowHtml = stats.wow !== null
+      ? `<span style="font-size:11px;font-weight:700;color:${stats.wow>0?'var(--green)':'var(--red)'}">${stats.wow>0?'▲':'▼'} ${Math.abs(stats.wow).toFixed(1)}% WoW</span>`
+      : '';
+    summaryHtml += `
+    <div class="summary-tile ${cls}">
+      <div class="summary-tile-lbl">${esc(m.label)}</div>
+      <div class="summary-tile-val">${esc(val)}</div>
+      <div class="summary-tile-sub">${wowHtml || (m.target ? `Target: ${esc(String(m.target))}` : 'This week')}</div>
+    </div>`;
+  });
+  summaryHtml += '</div>';
+
+  // Build metric cards
+  const chartJobs = [];
+  let html = summaryHtml;
+  const skipPatterns = SKIP_LABELS[_dept] || [];
+  const trailingWks = _dept === 'ld' ? 4 : 6;
+
+  (dept.sections||[]).forEach((sec,si) => {
+    const visible = (sec.metrics||[]).filter(m => {
+      if (skipPatterns.some(p=>p.test(m.label))) return false;
+      const vals = m.values||[];
+      const start = Math.max(0, _curIdx-3);
+      return vals.slice(start,_curIdx+1).some(v=>!isBlank(v));
+    });
+    if (!visible.length) return;
+
+    html += `<div class="sec-hdr">${esc(sec.title)}</div><div class="metrics-grid">`;
+    visible.forEach((m,mi) => {
+      const id6   = `c_${_dept}_${si}_${mi}_6`;
+      const idAll = `c_${_dept}_${si}_${mi}_a`;
+      const stats = computeStats(m.values, weeks, _curIdx);
+      const tStatus = evalTarget(m, stats.curNum);
+      const dotCol  = tStatus==='ok'?'#1D9E75':tStatus==='miss'?'#E24B4A':cfg.accent;
+
+      html += buildCard(m, id6, idAll, stats, prevIdx, dotCol, tStatus, cfg.accent, trailingWks);
+      chartJobs.push(() => {
+        drawChart(id6,  m, weeks, _curIdx, cfg.accent, trailingWks, true);
+        drawChart(idAll, m, weeks, _curIdx, cfg.accent, 0, false);
+      });
+    });
+    html += '</div>';
+  });
+
+  if (!html || html === summaryHtml) html += '<div class="empty-week">No data available for the selected week.</div>';
+  document.getElementById('page-'+_dept).innerHTML = html;
+  requestAnimationFrame(()=>chartJobs.forEach(fn=>fn()));
+}
+
+// ─── BUILD CARD HTML ──────────────────────────────────────────────
+function buildCard(m, id6, idAll, stats, prevIdx, dotCol, status, accent, trailingWks) {
+  const curDisp = fmtVal(m.values[_curIdx], m);
+  const lastWk  = prevIdx>=0 ? fmtVal(m.values[prevIdx],m) : '—';
+  const mtdDisp = stats.mtd!==null ? fmtNum(stats.mtd,m) : '—';
+  const qtdDisp = stats.qtd!==null ? fmtNum(stats.qtd,m) : '—';
+  const ytdDisp = stats.ytd!==null ? fmtNum(stats.ytd,m) : '—';
+  const ownerHtml  = m.owner  ? `<span class="owner-badge">${esc(m.owner)}</span>` : '';
+  const targetHtml = m.target ? `<div class="card-target">Target: ${esc(String(m.target))}</div>` : '';
+
+  return `
+<div class="metric-card s-${status}">
+  <div class="card-hdr">
+    <div class="card-title-row">
+      <div class="status-dot" style="background:${dotCol}"></div>
+      <div class="card-name">${esc(m.label)}</div>
+    </div>
+    <div class="card-actions">${ownerHtml}<button class="note-btn">+ Note</button></div>
+  </div>
+  ${targetHtml}
+  <div class="card-val-row">
+    <div class="card-val" style="color:${dotCol}">${curDisp}</div>
+    ${buildWoW(stats.wow)}
+  </div>
+  <div class="card-charts">
+    <div class="chart-block">
+      <div class="mini-chart-lbl">
+        <div class="mini-dot" style="background:${accent}"></div>Trailing ${trailingWks} Weeks
+      </div>
+      <canvas id="${id6}" height="110"></canvas>
+    </div>
+    <div class="chart-block">
+      <div class="mini-chart-lbl">
+        <div class="mini-dot" style="background:${accent}88"></div>Full Trend
+      </div>
+      <canvas id="${idAll}" height="110"></canvas>
+    </div>
+  </div>
+  <div class="card-stats">
+    ${statCell('LASTWK', lastWk)}
+    ${wowStatCell(stats.wow)}
+    ${statCell('MTD', mtdDisp)}
+    ${statCell('QTD', qtdDisp)}
+    ${statCell('YTD', ytdDisp)}
+  </div>
+</div>`;
+}
+
+// ─── CHARTS ───────────────────────────────────────────────────────
+function drawChart(id, metric, weeks, curIdx, accent, trailing, isShort) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  let pts = [];
+  for (let i=0; i<=curIdx; i++) {
+    const v=parseNum(metric.values[i]);
+    if (!isNaN(v)) pts.push({w:weeks[i],v,i});
+  }
+  if (trailing>0) pts=pts.slice(-trailing);
+  if (pts.length<1) return;
+  if (_charts[id]) {try{_charts[id].destroy();}catch(e){}}
+
+  const pointColor = pts.map(p => p.i===curIdx ? accent : accent+'AA');
+  const pointSize  = pts.map(p => p.i===curIdx ? 4.5 : 2.5);
+
+  _charts[id] = new Chart(el, {
+    type: 'line',
+    data: {
+      labels: pts.map(p=>p.w),
+      datasets: [{
+        data: pts.map(p=>p.v),
+        borderColor: accent,
+        backgroundColor: accent+'1A',
+        borderWidth: isShort ? 2 : 1.5,
+        pointBackgroundColor: pointColor,
+        pointRadius: pointSize,
+        pointHoverRadius: 5,
+        fill: true,
+        tension: 0.35,
+      }]
+    },
+    options: {
+      responsive: true,
+      animation: false,
+      plugins: {
+        legend: {display:false},
+        tooltip: {
+          backgroundColor: '#fff',
+          titleColor: '#1c2128',
+          bodyColor: accent,
+          borderColor: '#e1e4e8',
+          borderWidth: 1,
+          callbacks: {label: ctx=>' '+fmtVal(ctx.parsed.y,metric)}
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color:'#57606a',font:{size:8},
+            maxRotation:35,minRotation:0,autoSkip:true,
+            maxTicksLimit: trailing>0 ? trailing : (isShort ? 6 : 12),
+          },
+          grid:{color:'#e1e4e822'}
+        },
+        y: {
+          ticks: {
+            color:'#57606a',font:{size:8},
+            callback: v=>{
+              if(Math.abs(v)>=10000)return(v/1000).toFixed(1)+'k';
+              if(Math.abs(v)<0.01&&v!==0)return parseFloat(v.toFixed(4));
+              return parseFloat(v.toFixed(2));
+            }
+          },
+          grid:{color:'#e1e4e844'}
+        }
+      },
+      layout:{padding:{bottom:4}}
+    }
+  });
+}
+
+// ─── STATS COMPUTATION ───────────────────────────────────────────
+function computeStats(values, weeks, curIdx) {
+  const curNum  = parseNum(values[curIdx]);
+  const prevNum = curIdx>0 ? parseNum(values[curIdx-1]) : NaN;
+  let wow = null;
+  if (!isNaN(curNum)&&!isNaN(prevNum)&&prevNum!==0)
+    wow = ((curNum-prevNum)/Math.abs(prevNum))*100;
+
+  const curMonth = extractMonth(weeks[curIdx]);
+  let mtdVals=[], qtdVals=[], ytdVals=[];
+  for (let i=0; i<=curIdx; i++) {
+    const v=parseNum(values[i]);
+    if (isNaN(v)) continue;
+    if (curMonth&&extractMonth(weeks[i])===curMonth) mtdVals.push(v);
+    if (i>=Math.max(0,curIdx-12)) qtdVals.push(v);
+    ytdVals.push(v);
+  }
+  const avg=a=>a.length?parseFloat((a.reduce((s,x)=>s+x,0)/a.length).toFixed(2)):null;
+  return {curNum,wow,mtd:avg(mtdVals),qtd:avg(qtdVals),ytd:avg(ytdVals)};
+}
+
+function extractMonth(label) {
+  if (!label) return null;
+  const MONTHS=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const l=label.toLowerCase();
+  return MONTHS.find(m=>l.includes(m))||null;
+}
+
+function evalTarget(m, curNum) {
+  if (m.target==null||isNaN(curNum)) return 'none';
+  const tStr=String(m.target);
+  const tNum=parseFloat(tStr.replace(/[<>%,\s]/g,''));
+  if (isNaN(tNum)) return 'none';
+  const lowerBetter=tStr.includes('<')||m.lowerBetter===true;
+  return lowerBetter?(curNum<=tNum?'ok':'miss'):(curNum>=tNum?'ok':'miss');
+}
+
+// ─── HTML HELPERS ─────────────────────────────────────────────────
+function buildWoW(wow) {
+  if (wow===null) return '';
+  const abs=Math.abs(wow).toFixed(1);
+  if (wow>0) return `<div class="wow-pill wow-up">▲ ${abs}% WoW</div>`;
+  if (wow<0) return `<div class="wow-pill wow-dn">▼ ${abs}% WoW</div>`;
+  return `<div class="wow-pill wow-nc">— No change</div>`;
+}
+function statCell(lbl,val){
+  return `<div class="stat-cell"><div class="stat-lbl">${lbl}</div><div class="stat-val">${val}</div></div>`;
+}
+function wowStatCell(wow){
+  if (wow===null) return statCell('WOW','—');
+  const abs=Math.abs(wow).toFixed(1);
+  const cls=wow>0?'stat-up':wow<0?'stat-dn':'';
+  const arrow=wow>0?'▲':wow<0?'▼':'—';
+  return `<div class="stat-cell"><div class="stat-lbl">WOW</div><div class="stat-val ${cls}">${arrow} ${abs}%</div></div>`;
+}
+
+// ─── VALUE FORMATTING ─────────────────────────────────────────────
+function isBlank(v){
+  if(v===null||v===undefined)return true;
+  const s=String(v).trim();
+  return s===''||s==='-'||s==='N/A'||s==='n/a'||s==='#N/A'||s==='#REF!'||s==='#VALUE!';
+}
+function parseNum(v){
+  if(isBlank(v))return NaN;
+  return parseFloat(String(v).replace(/[%,]/g,''));
+}
+function isNoPctMetric(metric){
+  return NO_PCT_PATTERNS.some(p=>p.test(metric.label||''));
+}
+function fmtVal(v,metric){
+  if(isBlank(v))return '—';
+  const s=String(v).trim();
+  if(s==='0')return '0';
+  const forceNoP=metric&&isNoPctMetric(metric);
+  const raw=forceNoP?s.replace(/%$/,''):s;
+  const isPct=!forceNoP&&raw.endsWith('%');
+  const n=parseFloat(raw.replace(/[%,]/g,''));
+  if(isNaN(n))return raw;
+  const r=parseFloat(n.toFixed(2));
+  return isPct?r+'%':r.toString();
+}
+function fmtNum(n,metric){
+  if(n===null||isNaN(n))return '—';
+  if(metric&&isNoPctMetric(metric))return parseFloat(n.toFixed(2)).toString();
+  const curRaw=(metric&&metric.values)?metric.values[_curIdx]:null;
+  const sampleRaw=curRaw&&!isBlank(curRaw)?curRaw:(metric&&metric.values||[]).find(v=>!isBlank(v));
+  const isPct=sampleRaw&&String(sampleRaw).trim().endsWith('%');
+  const r=parseFloat(n.toFixed(2));
+  return isPct?r+'%':r.toString();
+}
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+window.onload = loadData;
+</script>
+</body>
+</html>
